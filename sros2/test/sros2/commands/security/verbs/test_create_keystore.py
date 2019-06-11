@@ -69,7 +69,7 @@ def test_create_keystore():
             ('ca.cert.pem', check_ca_cert_pem),
             ('ca_conf.cnf', check_ca_conf),
             ('ecdsaparam', check_ecdsaparam),
-            ('governance.xml', check_governance_p7s),
+            ('governance.xml', check_governance_xml),
             ('ca.key.pem', check_ca_key_pem),
             ('serial', None),
         )
