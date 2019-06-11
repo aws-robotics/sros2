@@ -15,6 +15,7 @@
 import configparser
 import os
 import tempfile
+from xml.etree import ElementTree
 
 from ros2cli import cli
 
@@ -48,20 +49,17 @@ def test_create_keystore():
 
     def check_ecdsaparam(generated_file):
         lines = generated_file.readlines()
-        assert lines[0] == '-----BEGIN EC PARAMETERS-----'
-        assert lines[-1] == '-----END EC PARAMETERS-----'
+        assert lines[0] == '-----BEGIN EC PARAMETERS-----\n'
+        assert lines[-1] == '-----END EC PARAMETERS-----\n'
 
     def check_governance_xml(generated_file):
-        # TODO
-        pass
+        # validates valid XML
+        ElementTree.parse(generated_file)
 
     def check_ca_key_pem(generated_file):
-        # TODO
-        pass
-
-    def check_serial(generated_file):
-        # TODO
-        pass
+        lines = generated_file.readlines()
+        assert lines[0] == '-----BEGIN PRIVATE KEY-----\n'
+        assert lines[-1] == '-----END PRIVATE KEY-----\n'
 
     with tempfile.TemporaryDirectory() as keystore_dir:
         assert cli.main(argv=['security', 'create_keystore', keystore_dir]) == 0
@@ -73,7 +71,7 @@ def test_create_keystore():
             ('ecdsaparam', check_ecdsaparam),
             ('governance.xml', check_governance_p7s),
             ('ca.key.pem', check_ca_key_pem),
-            ('serial', check_serial),
+            ('serial', None),
         )
 
         for expected_file, file_validator in expected_files:
