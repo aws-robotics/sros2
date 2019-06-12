@@ -17,26 +17,37 @@ import os
 import tempfile
 from xml.etree import ElementTree
 
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend as cryptography_backend
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+
+
 from ros2cli import cli
 
 
 def test_create_keystore():
-    def check_governance_p7s(generated_file):
+    def check_governance_p7s(path):
         # TODO
         pass
 
-    def check_index_txt(generated_file):
-        lines = generated_file.readlines()
-        assert len(lines) == 0
+    def check_index_txt(path):
+        with open(path, 'r') as f:
+            lines = f.readlines()
+            assert len(lines) == 0
 
-    def check_ca_cert_pem(generated_file):
-        lines = generated_file.readlines()
-        assert lines[0] == '-----BEGIN CERTIFICATE-----\n'
-        assert lines[-1] == '-----END CERTIFICATE-----\n'
+    def check_ca_cert_pem(path):
+        with open(path, 'rb') as f:
+            cert = x509.load_pem_x509_certificate(f.read(), cryptography_backend())
+            names = cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)
+            assert len(names) == 1
+            assert names[0].value == u'sros2testCA'
+            names = cert.subject.get_attributes_for_oid(x509.oid.NameOID.ORGANIZATION_NAME)
+            assert len(names) == 0
 
-    def check_ca_conf(generated_file):
+    def check_ca_conf(path):
         config = configparser.ConfigParser()
-        config.read_file(generated_file)
+        successful_reads = config.read(path)
+        assert len(successful_reads) == 1
         assert config.sections() == [
             ' ca ',
             ' CA_default ',
@@ -47,19 +58,22 @@ def test_create_keystore():
             ' root_ca_extensions ',
         ]
 
-    def check_ecdsaparam(generated_file):
-        lines = generated_file.readlines()
-        assert lines[0] == '-----BEGIN EC PARAMETERS-----\n'
-        assert lines[-1] == '-----END EC PARAMETERS-----\n'
+    def check_ecdsaparam(path):
+        with open(path, 'r') as f:
+            # cryptography does not seem to know how to load ecparams
+            lines = f.readlines()
+            assert lines[0] == '-----BEGIN EC PARAMETERS-----\n'
+            assert lines[-1] == '-----END EC PARAMETERS-----\n'
 
-    def check_governance_xml(generated_file):
+    def check_governance_xml(path):
         # validates valid XML
-        ElementTree.parse(generated_file)
+        ElementTree.parse(path)
 
-    def check_ca_key_pem(generated_file):
-        lines = generated_file.readlines()
-        assert lines[0] == '-----BEGIN PRIVATE KEY-----\n'
-        assert lines[-1] == '-----END PRIVATE KEY-----\n'
+    def check_ca_key_pem(path):
+        with open(path, 'rb') as f:
+            key = load_pem_private_key(f.read(), password=None, backend=cryptography_backend())
+            public = key.public_key()
+            assert public.curve.name == 'secp256r1'
 
     with tempfile.TemporaryDirectory() as keystore_dir:
         assert cli.main(argv=['security', 'create_keystore', keystore_dir]) == 0
@@ -78,5 +92,4 @@ def test_create_keystore():
             path = os.path.join(keystore_dir, expected_file)
             assert os.path.isfile(path), 'Expected output file %s was not found.' % expected_file
             if file_validator:
-                with open(path, 'r') as generated_file:
-                    file_validator(generated_file)
+                file_validator(path)
