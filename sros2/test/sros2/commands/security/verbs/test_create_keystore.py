@@ -21,15 +21,10 @@ from cryptography import x509
 from cryptography.hazmat.backends import default_backend as cryptography_backend
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
-
 from ros2cli import cli
 
 
 def test_create_keystore():
-    def check_governance_p7s(path):
-        # TODO
-        pass
-
     def check_index_txt(path):
         with open(path, 'r') as f:
             lines = f.readlines()
@@ -78,7 +73,7 @@ def test_create_keystore():
     with tempfile.TemporaryDirectory() as keystore_dir:
         assert cli.main(argv=['security', 'create_keystore', keystore_dir]) == 0
         expected_files = (
-            ('governance.p7s', check_governance_p7s),
+            ('governance.p7s', None),
             ('index.txt', check_index_txt),
             ('ca.cert.pem', check_ca_cert_pem),
             ('ca_conf.cnf', check_ca_conf),
